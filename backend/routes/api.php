@@ -5,6 +5,9 @@ use App\Http\Controllers\Api\ExamController;
 use App\Http\Controllers\Api\ExamPaperController;
 use App\Http\Controllers\Api\QuestionController;
 use App\Http\Controllers\Api\ScoreController;
+use App\Http\Controllers\Api\WeaknessController;
+use App\Http\Controllers\Api\ClassController;
+use App\Http\Controllers\Api\PracticeController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('api')->prefix('auth')->group(function () {
@@ -45,6 +48,35 @@ Route::middleware(['api', 'auth:sanctum', 'throttle:60,1'])->group(function () {
         Route::post('/{examPaper}/submit', [ExamController::class, 'submit']);
         Route::get('/records', [ExamController::class, 'myRecords']);
         Route::get('/records/{record}', [ExamController::class, 'showRecord']);
+    });
+
+
+    // 知识点弱项画像（学习反馈，不影响正式成绩）
+    Route::prefix('weakness')->group(function () {
+        Route::get('/my', [WeaknessController::class, 'myProfile']);
+        Route::get('/my/recommendations', [WeaknessController::class, 'myRecommendations']);
+        Route::get('/students/{student}', [WeaknessController::class, 'studentProfile']);
+        Route::get('/classes/{classRoom}', [WeaknessController::class, 'classProfile']);
+    });
+
+    // 班级管理（教师/管理员）
+    Route::prefix('classes')->group(function () {
+        Route::get('/', [ClassController::class, 'index']);
+        Route::post('/', [ClassController::class, 'store']);
+        Route::put('/{classRoom}', [ClassController::class, 'update']);
+        Route::delete('/{classRoom}', [ClassController::class, 'destroy']);
+        Route::get('/{classRoom}/students', [ClassController::class, 'students']);
+        Route::post('/{classRoom}/students', [ClassController::class, 'addStudent']);
+        Route::delete('/{classRoom}/students/{student}', [ClassController::class, 'removeStudent']);
+    });
+
+    // 弱项巩固练习（独立于正式考试，不计分）
+    Route::prefix('practice')->group(function () {
+        Route::post('/start/recommended', [PracticeController::class, 'startRecommended']);
+        Route::post('/start/custom', [PracticeController::class, 'startCustom']);
+        Route::post('/{session}/submit', [PracticeController::class, 'submit']);
+        Route::get('/history', [PracticeController::class, 'history']);
+        Route::get('/{session}', [PracticeController::class, 'show']);
     });
 
     Route::prefix('scores')->group(function () {

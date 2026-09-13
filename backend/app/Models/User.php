@@ -17,6 +17,7 @@ class User extends Authenticatable
         'password',
         'real_name',
         'role',
+        'class_id',
         'status',
     ];
 
@@ -69,5 +70,15 @@ class User extends Authenticatable
     public function examRecords()
     {
         return $this->hasMany(ExamRecord::class, 'user_id');
+    }
+
+    public function classRoom()
+    {
+        return $this->belongsTo(ClassRoom::class, 'class_id');
+    }
+
+    public function practiceSessions()
+    {
+        return $this->hasMany(PracticeSession::class, 'user_id');
     }
 }

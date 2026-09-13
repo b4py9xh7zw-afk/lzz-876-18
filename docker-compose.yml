@@ -78,12 +78,14 @@ services:
               password VARCHAR(255) NOT NULL COMMENT '密码(bcrypt加密)',
               real_name VARCHAR(50) COMMENT '真实姓名',
               role ENUM('admin', 'teacher', 'student') DEFAULT 'student' COMMENT '角色',
+              class_id BIGINT UNSIGNED NULL COMMENT '所属班级ID(仅学生)',
               status TINYINT(1) DEFAULT 1 COMMENT '状态: 1-启用 0-禁用',
               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
               updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
               INDEX idx_username (username),
               INDEX idx_email (email),
-              INDEX idx_role (role)
+              INDEX idx_role (role),
+              INDEX idx_class_id (class_id)
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
           INSERT INTO users (username, email, password, real_name, role, status) VALUES
@@ -162,7 +164,8 @@ services:
           INSERT INTO exam_papers (title, description, total_score, total_time, question_count, type, created_by, status) VALUES
           ('计算机基础测试', '测试计算机基础知识，包含操作系统和数据结构', 10.00, 30, 3, 'fixed', 2, 1),
           ('Python入门测试', 'Python基础知识测试', 8.00, 20, 2, 'fixed', 2, 1),
-          ('数据库基础测试', '数据库基础知识测试', 3.00, 15, 2, 'fixed', 2, 1);
+          ('数据库基础测试', '数据库基础知识测试', 3.00, 15, 2, 'fixed', 2, 1),
+          ('数据结构专项练习', '数据结构知识点专项测评，用于弱项画像演示', 5.00, 20, 3, 'fixed', 2, 1);
 
           CREATE TABLE IF NOT EXISTS exam_paper_questions (
               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -184,7 +187,10 @@ services:
           (2, 5, 2, 3.00),
           (2, 6, 3, 2.00),
           (3, 6, 1, 2.00),
-          (3, 7, 2, 1.00);
+          (3, 7, 2, 1.00),
+          (4, 3, 1, 2.00),
+          (4, 9, 2, 2.00),
+          (4, 10, 3, 1.00);
 
           CREATE TABLE IF NOT EXISTS exam_records (
               id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -226,6 +232,94 @@ services:
               `owner` VARCHAR(255) NOT NULL,
               `expiration` INT NOT NULL
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Laravel缓存锁表';
+
+          CREATE TABLE IF NOT EXISTS classes (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              name VARCHAR(100) NOT NULL COMMENT '班级名称',
+              description VARCHAR(500) COMMENT '班级描述',
+              created_by BIGINT UNSIGNED COMMENT '创建教师ID',
+              status TINYINT(1) DEFAULT 1 COMMENT '状态: 1-正常 0-已解散',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_created_by (created_by)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='班级表（仅用于弱项画像分组）';
+
+          INSERT INTO classes (id, name, description, created_by, status) VALUES
+          (1, '计科2301班', '计算机科学与技术 2023 级 1 班（弱项画像演示）', 2, 1),
+          (2, '计科2302班', '计算机科学与技术 2023 级 2 班（弱项画像演示）', 2, 1);
+
+          INSERT INTO users (id, username, email, password, real_name, role, class_id, status) VALUES
+          (4, 'student2', 'student2@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '学生用户2', 'student', 1, 1),
+          (5, 'student3', 'student3@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '学生用户3', 'student', 1, 1),
+          (6, 'student4', 'student4@example.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', '学生用户4', 'student', 2, 1);
+
+          UPDATE users SET class_id = 1 WHERE id = 3;
+
+          INSERT INTO questions (category_id, type, title, options, answer, analysis, difficulty, score, created_by, status) VALUES
+          (4, 'single_choice', '下列哪个属于操作系统的进程调度算法？', '{"A": "时间片轮转", "B": "冒泡排序", "C": "二分查找", "D": "快速排序"}', 'A', '时间片轮转是典型的进程调度算法，其余均为查找/排序算法', 2, 2.00, 2, 1),
+          (5, 'single_choice', '栈这种数据结构遵循的存取原则是？', '{"A": "先进先出", "B": "后进先出", "C": "随机存取", "D": "按关键字存取"}', 'B', '栈遵循后进先出(LIFO)原则', 1, 2.00, 2, 1),
+          (5, 'true_false', '队列是一种后进先出的线性数据结构。', NULL, 'false', '队列是先进先出(FIFO)，栈才是后进先出', 2, 1.00, 2, 1),
+          (8, 'multiple_choice', '下列哪些是 MySQL 中常用的数据类型？', '{"A": "INT", "B": "VARCHAR", "C": "PHOTO", "D": "DATETIME"}', 'ABD', 'PHOTO 不是 MySQL 内置数据类型', 1, 3.00, 2, 1);
+
+          CREATE TABLE IF NOT EXISTS practice_sessions (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              user_id BIGINT UNSIGNED NOT NULL COMMENT '练习学生ID',
+              source ENUM('recommendation', 'wrong_questions', 'custom') NOT NULL DEFAULT 'recommendation' COMMENT '练习来源',
+              title VARCHAR(200) COMMENT '练习名称',
+              question_ids JSON COMMENT '本次练习题目ID列表',
+              question_count INT NOT NULL DEFAULT 0 COMMENT '题目数量',
+              correct_count INT NOT NULL DEFAULT 0 COMMENT '答对数量',
+              total_score DECIMAL(6,2) NOT NULL DEFAULT 0.00 COMMENT '练习总分(非成绩)',
+              score DECIMAL(6,2) NOT NULL DEFAULT 0.00 COMMENT '练习得分(非成绩)',
+              status ENUM('in_progress', 'finished') NOT NULL DEFAULT 'in_progress' COMMENT '状态',
+              started_at TIMESTAMP NULL COMMENT '开始时间',
+              finished_at TIMESTAMP NULL COMMENT '完成时间',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_user_id (user_id),
+              INDEX idx_status (status)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='弱项巩固练习会话表(不计入正式成绩)';
+
+          CREATE TABLE IF NOT EXISTS practice_answers (
+              id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+              practice_session_id BIGINT UNSIGNED NOT NULL COMMENT '练习会话ID',
+              question_id BIGINT UNSIGNED NOT NULL COMMENT '题目ID',
+              answer TEXT COMMENT '学生答案',
+              is_correct TINYINT(1) DEFAULT 0 COMMENT '是否正确: 1-正确 0-错误',
+              score DECIMAL(5,2) DEFAULT 0.00 COMMENT '该题练习得分(非成绩)',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              INDEX idx_practice_session_id (practice_session_id),
+              INDEX idx_question_id (question_id)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='练习作答明细表(不计入正式成绩)';
+
+          -- 弱项画像演示数据：3 张试卷的已评分考试记录（仅用于统计，正式成绩口径不变）
+          INSERT INTO exam_records (id, user_id, exam_paper_id, start_time, end_time, score, status, created_at, updated_at) VALUES
+          (1, 3, 1, DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), 3.00, 'graded', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
+          (2, 3, 2, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), 1.00, 'graded', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY)),
+          (3, 3, 3, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 0.00, 'graded', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
+          (4, 3, 1, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 3.00, 'graded', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
+          (5, 4, 1, DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 3.00, 'graded', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
+          (6, 4, 2, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 4.00, 'graded', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
+          (7, 5, 1, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 4.00, 'graded', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+          (8, 6, 1, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 3.00, 'graded', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+          (9, 3, 4, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 0.00, 'graded', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+          (10, 4, 4, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 1.00, 'graded', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+          (11, 5, 4, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 2.00, 'graded', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+          -- 作答明细：学生3(ids 1-4,9)、学生4(5-6,10)、学生5(7,11)、学生6(8)
+          INSERT INTO exam_record_answers (exam_record_id, question_id, answer, is_correct, score) VALUES
+          (1, 1, 'C', 1, 2.00), (1, 2, 'true', 1, 1.00), (1, 3, 'A', 0, 0.00),
+          (2, 4, 'B', 0, 0.00), (2, 5, 'AB', 0, 0.00), (2, 6, 'A', 1, 2.00),
+          (3, 6, 'B', 0, 0.00), (3, 7, 'false', 0, 0.00),
+          (4, 1, 'C', 1, 2.00), (4, 2, 'true', 1, 1.00), (4, 3, 'B', 0, 0.00),
+          (5, 1, 'C', 1, 2.00), (5, 2, 'false', 0, 0.00), (5, 3, 'A', 0, 0.00),
+          (6, 4, 'A', 1, 1.00), (6, 5, 'ABD', 1, 3.00), (6, 6, 'A', 0, 0.00),
+          (7, 1, 'C', 1, 2.00), (7, 2, 'true', 1, 1.00), (7, 3, 'C', 1, 2.00),
+          (8, 1, 'C', 1, 2.00), (8, 2, 'false', 0, 0.00), (8, 3, 'C', 1, 2.00),
+          (9, 3, 'B', 0, 0.00), (9, 9, 'A', 0, 0.00), (9, 10, 'true', 0, 0.00),
+          (10, 3, 'D', 0, 0.00), (10, 9, 'B', 1, 2.00), (10, 10, 'true', 0, 0.00),
+          (11, 3, 'A', 0, 0.00), (11, 9, 'C', 0, 0.00), (11, 10, 'false', 1, 1.00);
           SQL
 
           echo "Database initialized from inline schema."

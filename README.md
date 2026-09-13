@@ -68,7 +68,10 @@ docker compose ps
 |------|-------|----------|
 | Admin | admin@example.com | password |
 | Teacher | teacher@example.com | password |
-| Student | student1@example.com | password |
+| Student | student1@example.com（计科2301班） | password |
+| Student | student2@example.com（计科2301班） | password |
+| Student | student3@example.com（计科2301班） | password |
+| Student | student4@example.com（计科2302班） | password |
 
 > 登录页已移除快捷测试账号模块，请手动输入账号密码。
 
@@ -88,6 +91,15 @@ node scripts/verify-readme-test-credentials.mjs --manifest qa/.runtime/test-cred
 3. 试卷管理：试卷创建、编辑、题目关联。
 4. 在线考试：开始考试、提交答卷、自动评分。
 5. 成绩统计：个人成绩与管理端统计数据。
+6. 知识点弱项画像（学习反馈，不计入正式成绩）：
+   - 学生：按知识点（分类两级聚合）、题型、难度层级查看正确率与失分，定位未攻克的真实错题；
+   - 教师：创建班级、分配学生，按班级查看共同薄弱知识点及每位学生的掌握情况；
+   - 练习推荐：仅来自本人真实错题（最近一次考试仍答错、且未通过练习答对）与同知识点/同题型/难度相近的新题，不做热门题推荐；
+   - 弱项巩固练习独立建表（`practice_sessions` / `practice_answers`），提交后即时给出答案与解析，并可把对应错题标记为“已攻克”；全程不读写 `exam_records`，正式成绩不受任何影响。
+
+> 弱项画像依赖班级与练习相关新表（`classes`、`users.class_id`、`practice_sessions`、`practice_answers`）。
+> 在已有数据卷上升级时需要重建数据库：`docker compose down -v && docker compose up -d --build`。
+
 
 ## 角色权限
 | 角色 | 可访问模块 |

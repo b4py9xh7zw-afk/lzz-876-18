@@ -1,6 +1,9 @@
 <template>
   <div class="space-y-6">
-    <h1 class="text-2xl font-bold text-gray-900">我的成绩</h1>
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-bold text-gray-900">我的成绩</h1>
+      <router-link to="/weakness" class="btn-secondary text-sm">查看弱项画像与练习推荐</router-link>
+    </div>
     <div v-if="loading" class="text-center py-8">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
     </div>

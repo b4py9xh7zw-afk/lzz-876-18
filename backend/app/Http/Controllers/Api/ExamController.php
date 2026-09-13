@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ExamPaper;
 use App\Models\ExamRecord;
 use App\Models\ExamRecordAnswer;
-use App\Models\Question;
+use App\Services\AnswerGrader;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -129,7 +129,7 @@ class ExamController extends Controller
                 continue;
             }
 
-            $isCorrect = $this->checkAnswer($question, $answerData['answer']);
+            $isCorrect = AnswerGrader::grade($question, $answerData['answer']);
             $score = $isCorrect ? $question->pivot->score : 0;
 
             ExamRecordAnswer::create([
@@ -179,26 +179,5 @@ class ExamController extends Controller
         return response()->json([
             'record' => $record,
         ]);
-    }
-
-    protected function checkAnswer(Question $question, string $userAnswer): bool
-    {
-        $correctAnswer = $question->answer;
-
-        switch ($question->type) {
-            case 'single_choice':
-            case 'true_false':
-                return strtoupper(trim($userAnswer)) === strtoupper(trim($correctAnswer));
-            case 'multiple_choice':
-                $userAnswers = explode(',', strtoupper(trim($userAnswer)));
-                $correctAnswers = explode(',', strtoupper(trim($correctAnswer)));
-                sort($userAnswers);
-                sort($correctAnswers);
-                return $userAnswers === $correctAnswers;
-            case 'fill_blank':
-                return strtoupper(trim($userAnswer)) === strtoupper(trim($correctAnswer));
-            default:
-                return false;
-        }
     }
 }
